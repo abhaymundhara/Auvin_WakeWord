@@ -1,0 +1,31 @@
+[project]
+name = "auvin-wake-word-training"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "piper-tts==1.4.2",
+  "torch>=2.0",
+  "onnxruntime>=1.16",
+  "onnx>=1.15",
+  "datasets>=2.14",
+  "numpy>=1.24",
+  "scipy>=1.11",
+  "soundfile>=0.12",
+  "librosa>=0.10",
+  "tqdm>=4.66",
+  "pyyaml>=6.0",
+  "huggingface-hub>=0.20",
+]
+
+[project.scripts]
+auvin-download-models = "src.download_models:main"
+auvin-probe = "src.probe_onnx:main"
+auvin-phonemize = "src.phonemize_check:main"
+auvin-synthesize = "src.synthesize:main"
+auvin-featurize = "src.featurize:main"
+auvin-train = "src.train:main"
+auvin-export = "src.export_onnx:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]

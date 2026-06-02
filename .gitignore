@@ -1,0 +1,24 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+training/logs/
+
+# Data (large)
+data/
+models/voices/
+*.wav
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Keep backbone ONNX in repo (small ~4MB total)
+!models/backbone/

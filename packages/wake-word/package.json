@@ -1,0 +1,37 @@
+{
+  "name": "@auvin/wake-word",
+  "version": "0.1.0",
+  "description": "Cross-platform Auvin wake word detection using openWakeWord backbone",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./node": "./dist/node/index.js",
+    "./web": "./dist/web/index.js",
+    "./native": "./dist/native/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:live": "node dist/bin/test-live.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "onnxruntime-node": "^1.20.0",
+    "onnxruntime-web": "^1.20.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "peerDependencies": {
+    "onnxruntime-node": "^1.20.0",
+    "onnxruntime-web": "^1.20.0",
+    "onnxruntime-react-native": "^1.20.0"
+  },
+  "peerDependenciesMeta": {
+    "onnxruntime-node": { "optional": true },
+    "onnxruntime-web": { "optional": true },
+    "onnxruntime-react-native": { "optional": true }
+  }
+}

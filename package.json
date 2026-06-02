@@ -1,0 +1,11 @@
+{
+  "name": "auvin-wakeword",
+  "private": true,
+  "workspaces": [
+    "packages/wake-word"
+  ],
+  "scripts": {
+    "test": "npm run test --workspace=@auvin/wake-word",
+    "build": "npm run build --workspace=@auvin/wake-word"
+  }
+}
