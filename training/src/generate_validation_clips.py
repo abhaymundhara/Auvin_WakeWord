@@ -31,7 +31,12 @@ def synth_validation_clips() -> None:
     negatives = ["oven", "often", "avin", "hey siri", "hello there"]
 
     for i, phrase in enumerate(positives):
-        chunks = [c.audio_float_array for c in voice.synthesize(phrase)]
+        syn_config = SynthesisConfig(
+            length_scale=random.uniform(0.85, 1.15),
+            noise_scale=random.uniform(0.5, 0.9),
+            noise_w_scale=random.uniform(0.5, 0.9),
+        )
+        chunks = [c.audio_float_array for c in voice.synthesize(phrase, syn_config=syn_config)]
         pcm = pad_leading_silence(np.concatenate(chunks).astype(np.float32), MIN_CLIP_SAMPLES)
         pcm = augment_clip(pcm)
         sf.write(str(pos_dir / f"pos_{i:02d}.wav"), pcm, SAMPLE_RATE)

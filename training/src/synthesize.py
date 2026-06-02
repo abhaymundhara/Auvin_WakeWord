@@ -12,6 +12,7 @@ import numpy as np
 import soundfile as sf
 import yaml
 from piper import PiperVoice
+from piper.config import SynthesisConfig
 from tqdm import tqdm
 
 from .audio_utils import augment_clip, pad_leading_silence
@@ -58,13 +59,13 @@ def synthesize_one(args: tuple) -> dict | None:
         length_scale = random.uniform(0.75, 1.25)
         noise_scale = random.uniform(0.4, 1.0)
         noise_w_scale = random.uniform(0.4, 1.0)
-        audio_chunks = []
-        for chunk in voice.synthesize(
-            phrase,
+        syn_config = SynthesisConfig(
             length_scale=length_scale,
             noise_scale=noise_scale,
             noise_w_scale=noise_w_scale,
-        ):
+        )
+        audio_chunks = []
+        for chunk in voice.synthesize(phrase, syn_config=syn_config):
             audio_chunks.append(chunk.audio_float_array)
         pcm = np.concatenate(audio_chunks).astype(np.float32)
         pcm = augment_clip(
