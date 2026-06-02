@@ -50,12 +50,21 @@ def download_voices(voices: list[str]) -> None:
             urllib.request.urlretrieve(url, dest)
 
 
+_worker_voices: dict[str, PiperVoice] = {}
+
+
+def _get_voice(voice_name: str) -> PiperVoice:
+    if voice_name not in _worker_voices:
+        model_path = VOICES_DIR / f"{voice_name}.onnx"
+        config_path = VOICES_DIR / f"{voice_name}.onnx.json"
+        _worker_voices[voice_name] = PiperVoice.load(str(model_path), config_path=str(config_path))
+    return _worker_voices[voice_name]
+
+
 def synthesize_one(args: tuple) -> dict | None:
     phrase, voice_name, out_dir, min_samples, aug_cfg, bucket = args
     try:
-        model_path = VOICES_DIR / f"{voice_name}.onnx"
-        config_path = VOICES_DIR / f"{voice_name}.onnx.json"
-        voice = PiperVoice.load(str(model_path), config_path=str(config_path))
+        voice = _get_voice(voice_name)
         length_scale = random.uniform(0.75, 1.25)
         noise_scale = random.uniform(0.4, 1.0)
         noise_w_scale = random.uniform(0.4, 1.0)
