@@ -56,20 +56,25 @@ def phonemize_phrases(phrases: list[str]) -> list[dict]:
     results = []
     for phrase in phrases:
         phones = voice.phonemize(phrase)
-        results.append({"phrase": phrase, "phonemes": phones})
+        if isinstance(phones, list):
+            phones_key = " ".join(str(p) for p in phones)
+        else:
+            phones_key = str(phones)
+        results.append({"phrase": phrase, "phonemes": phones_key, "phonemes_raw": phones})
     return results
 
 
-def group_positives(results: list[dict]) -> tuple[list[str], list[dict]]:
-    groups: dict[str, list[str]] = {}
+def approve_positives(results: list[dict]) -> tuple[list[str], list[dict]]:
+    """Keep phrase variants unless phonemization contains known bad patterns."""
+    bad_markers = ["d\u0292a\u026a", "dʒaɪ"]
+    approved: list[str] = []
+    rejected: list[dict] = []
     for item in results:
-        key = item["phonemes"]
-        groups.setdefault(key, []).append(item["phrase"])
-    if not groups:
-        return [], results
-    primary = max(groups.items(), key=lambda kv: len(kv[1]))[0]
-    approved = groups[primary]
-    rejected = [r for r in results if r["phrase"] not in approved]
+        phones = item["phonemes"]
+        if any(marker in phones for marker in bad_markers):
+            rejected.append(item)
+        else:
+            approved.append(item["phrase"])
     return approved, rejected
 
 
@@ -80,7 +85,7 @@ def main() -> None:
 
     pos_results = phonemize_phrases(CANDIDATE_POSITIVES)
     neg_results = phonemize_phrases(CANDIDATE_HARD_NEGATIVES)
-    approved_pos, rejected_pos = group_positives(pos_results)
+    approved_pos, rejected_pos = approve_positives(pos_results)
 
     report = {
         "positives": pos_results,

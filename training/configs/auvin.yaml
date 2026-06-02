@@ -1,0 +1,59 @@
+wake_word: auvin
+sample_rate: 16000
+positives:
+  phrases:
+  - auvin
+  - Auvin
+  - hey auvin
+  - Hey Auvin
+  - hey aw vin
+  - oh auvin
+  - au vin
+  - hey au vin
+  target_count: 18000
+hard_negatives:
+  phrases:
+  - oven
+  - often
+  - avin
+  - a vine
+  - oh vin
+  - hey oven
+  - hey often
+  - hey avin
+  - hey siri
+  - hey google
+  - hey alexa
+  - called auvin
+  - this is auvin
+  - to auvin
+  target_count: 10000
+random_negatives:
+  dataset: librispeech
+  split: train.clean.100
+  target_count: 15000
+piper_voices:
+- en_US-amy-medium
+- en_US-ryan-high
+- en_US-lessac-medium
+- en_US-hfc_female-medium
+- en_US-libritts-high
+- en_GB-alan-medium
+- en_GB-jenny_dioco-medium
+augmentation:
+  speed_jitter: 0.15
+  pitch_semitones: 2.0
+  gain_db: 6.0
+  min_duration_sec: 2.4
+training:
+  hard_negative_weight: 4.0
+  epochs: 50
+  patience: 12
+  batch_size: 1024
+  learning_rate: 0.001
+gates:
+  recall_min: 0.97
+  real_speech_fpr_max: 0.0005
+  hard_negative_fpr_max: 0.03
+  mean_pos_score_min: 0.95
+  mean_neg_score_max: 0.02
