@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import random
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +14,7 @@ from .paths import ROOT
 
 def synth_validation_clips() -> None:
     from piper import PiperVoice
+    from piper.config import SynthesisConfig
 
     from .paths import VOICES_DIR
 

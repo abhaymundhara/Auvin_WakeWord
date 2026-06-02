@@ -71,11 +71,11 @@ export class StreamingPipeline {
     };
     const out = await this.vadSession.run(feeds);
     const prob = out.output ?? out.out ?? Object.values(out)[0];
-    if (out.hn) this.vadH = out.hn as Float32Array;
-    if (out.cn) this.vadC = out.cn as Float32Array;
-    if (out.h) this.vadH = out.h as Float32Array;
-    if (out.c) this.vadC = out.c as Float32Array;
-    return prob ? prob[0]! : 1;
+    if (out.hn) this.vadH = new Float32Array(out.hn as Float32Array);
+    if (out.cn) this.vadC = new Float32Array(out.cn as Float32Array);
+    if (out.h) this.vadH = new Float32Array(out.h as Float32Array);
+    if (out.c) this.vadC = new Float32Array(out.c as Float32Array);
+    return prob ? Number(prob[0]) : 1;
   }
 
   private async runMel(context: Float32Array): Promise<Float32Array> {

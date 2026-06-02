@@ -138,9 +138,10 @@ def main() -> None:
     w = balance_weights(y, w)
     X_train, y_train, w_train, X_val, y_val, w_val = split_data(X, y, w)
 
-    pos_weight = torch.tensor([1.0])
     device = pick_device()
     print(f"Training on {device}")
+
+    pos_weight = torch.tensor([1.0], device=device)
 
     # MPS smoke test
     model = ConvWakeHead().to(device)
