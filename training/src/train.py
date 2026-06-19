@@ -123,6 +123,18 @@ def balance_weights(y: np.ndarray, w: np.ndarray) -> np.ndarray:
     return out
 
 
+def apply_training_weights(
+    y: np.ndarray,
+    w: np.ndarray,
+    hard_negative_weight: float,
+) -> np.ndarray:
+    """Apply configured weights while preserving featurization's class markers."""
+    out = w.copy()
+    hard_negative = (y == 0) & (w >= 3.5)
+    out[hard_negative] = hard_negative_weight
+    return balance_weights(y, out)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train Auvin wake word classifier")
     parser.add_argument("--epochs", type=int, default=0)
@@ -135,7 +147,7 @@ def main() -> None:
     epochs = args.epochs or train_cfg["epochs"]
 
     X, y, w = load_features()
-    w = balance_weights(y, w)
+    w = apply_training_weights(y, w, train_cfg["hard_negative_weight"])
     X_train, y_train, w_train, X_val, y_val, w_val = split_data(X, y, w)
 
     device = pick_device()

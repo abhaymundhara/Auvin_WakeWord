@@ -47,7 +47,7 @@ augmentation:
   gain_db: 6.0
   min_duration_sec: 2.4
 training:
-  hard_negative_weight: 4.0
+  hard_negative_weight: 40.0
   epochs: 50
   patience: 12
   batch_size: 1024
