@@ -6,6 +6,7 @@ import random
 import urllib.request
 import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from io import BytesIO
 from pathlib import Path
 
 import numpy as np
@@ -134,8 +135,14 @@ def synthesize_bucket(
     return total
 
 
-def download_librispeech(target_count: int, out_dir: Path) -> int:
-    from datasets import load_dataset
+def download_librispeech(
+    target_count: int,
+    out_dir: Path,
+    dataset: str,
+    subset: str,
+    split: str,
+) -> int:
+    from datasets import Audio, load_dataset
 
     out_dir.mkdir(parents=True, exist_ok=True)
     existing = count_existing(out_dir)
@@ -143,15 +150,17 @@ def download_librispeech(target_count: int, out_dir: Path) -> int:
         print(f"random_negatives: already have {existing} clips")
         return existing
 
-    ds = load_dataset("librispeech_asr", "clean", split="train.100", streaming=True)
+    ds = load_dataset(dataset, subset, split=split, streaming=True)
+    # Decode with soundfile so synthesis does not require datasets' optional
+    # torchcodec dependency.
+    ds = ds.cast_column("audio", Audio(decode=False))
     needed = target_count - existing
     saved = 0
     for row in tqdm(ds, desc="librispeech", total=needed):
         if saved >= needed:
             break
         audio = row["audio"]
-        pcm = np.array(audio["array"], dtype=np.float32)
-        sr = audio["sampling_rate"]
+        pcm, sr = sf.read(BytesIO(audio["bytes"]), dtype="float32")
         if sr != SAMPLE_RATE:
             import librosa
 
@@ -204,7 +213,14 @@ def main() -> None:
     )
 
     if not args.skip_librispeech:
-        download_librispeech(rand_target, RAW_DIR / "random_negatives")
+        random_cfg = config["random_negatives"]
+        download_librispeech(
+            rand_target,
+            RAW_DIR / "random_negatives",
+            random_cfg["dataset"],
+            random_cfg["subset"],
+            random_cfg["split"],
+        )
 
     manifest = {
         "positives": count_existing(RAW_DIR / "positives"),

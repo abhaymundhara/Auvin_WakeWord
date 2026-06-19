@@ -29,8 +29,9 @@ hard_negatives:
   - to auvin
   target_count: 10000
 random_negatives:
-  dataset: librispeech
-  split: train.clean.100
+  dataset: openslr/librispeech_asr
+  subset: clean
+  split: train.100
   target_count: 15000
 piper_voices:
 - en_US-amy-medium
