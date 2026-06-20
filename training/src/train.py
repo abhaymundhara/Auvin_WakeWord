@@ -74,6 +74,12 @@ def compute_metrics(scores: np.ndarray, labels: np.ndarray, kinds: np.ndarray | 
             metrics["field_negative_fpr"] = float(
                 (preds & field_neg).sum() / max(field_neg.sum(), 1)
             )
+        metrics["composite"] = (
+            recall
+            - 5 * metrics.get("hard_negative_fpr", 0.0)
+            - 100 * metrics.get("real_speech_fpr", 0.0)
+            - 2 * metrics.get("field_negative_fpr", 0.0)
+        )
     return metrics
 
 
@@ -167,6 +173,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train Auvin wake word classifier")
     parser.add_argument("--epochs", type=int, default=0)
     parser.add_argument("--evaluate-only", action="store_true")
+    parser.add_argument("--resume-from", type=Path)
+    parser.add_argument("--learning-rate", type=float)
     args = parser.parse_args()
 
     with CONFIG_PATH.open(encoding="utf-8") as f:
@@ -198,6 +206,10 @@ def main() -> None:
         write_report(build_report(metrics, gates))
         return
 
+    if args.resume_from:
+        model.load_state_dict(torch.load(args.resume_from, map_location=device))
+        print(f"Resuming from {args.resume_from}")
+
     # MPS smoke test
     smoke_x = torch.randn(4, 16, 96, device=device)
     smoke_y = torch.randint(0, 2, (4,), device=device).float()
@@ -213,7 +225,8 @@ def main() -> None:
     )
     train_loader = DataLoader(train_ds, batch_size=train_cfg["batch_size"], shuffle=True)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=train_cfg["learning_rate"])
+    learning_rate = args.learning_rate or train_cfg["learning_rate"]
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
