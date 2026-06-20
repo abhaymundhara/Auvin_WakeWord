@@ -27,10 +27,11 @@ def load_features():
     X = np.load(FEATURES_DIR / "X.npy")
     y = np.load(FEATURES_DIR / "y.npy")
     w = np.load(FEATURES_DIR / "w.npy")
-    return X, y, w
+    k = np.load(FEATURES_DIR / "k.npy")
+    return X, y, w, k
 
 
-def split_data(X, y, w, val_ratio=0.2, seed=42):
+def split_data(X, y, w, k, val_ratio=0.2, seed=42):
     rng = np.random.default_rng(seed)
     idx = np.arange(len(y))
     rng.shuffle(idx)
@@ -40,9 +41,11 @@ def split_data(X, y, w, val_ratio=0.2, seed=42):
         X[train_idx],
         y[train_idx],
         w[train_idx],
+        k[train_idx],
         X[val_idx],
         y[val_idx],
         w[val_idx],
+        k[val_idx],
     )
 
 
@@ -69,14 +72,6 @@ def compute_metrics(scores: np.ndarray, labels: np.ndarray, kinds: np.ndarray | 
     return metrics
 
 
-def infer_kind_from_weight(weight: float, label: int) -> str:
-    if label == 1:
-        return "positive"
-    if weight >= 3.5:
-        return "hard_negative"
-    return "random_negative"
-
-
 def train_epoch(model, loader, optimizer, device, pos_weight, use_aug=True):
     model.train()
     bce = nn.BCELoss(reduction="none")
@@ -98,7 +93,7 @@ def train_epoch(model, loader, optimizer, device, pos_weight, use_aug=True):
 
 
 @torch.no_grad()
-def evaluate(model, X, y, w, device):
+def evaluate(model, X, y, kinds, device):
     model.eval()
     bs = 2048
     scores_list = []
@@ -107,7 +102,6 @@ def evaluate(model, X, y, w, device):
         scores = model(xb).cpu().numpy()
         scores_list.append(scores)
     scores = np.concatenate(scores_list)
-    kinds = np.array([infer_kind_from_weight(float(w[i]), int(y[i])) for i in range(len(y))])
     return compute_metrics(scores, y, kinds)
 
 
@@ -126,11 +120,12 @@ def balance_weights(y: np.ndarray, w: np.ndarray) -> np.ndarray:
 def apply_training_weights(
     y: np.ndarray,
     w: np.ndarray,
+    kinds: np.ndarray,
     hard_negative_weight: float,
 ) -> np.ndarray:
     """Apply configured weights while preserving featurization's class markers."""
     out = w.copy()
-    hard_negative = (y == 0) & (w >= 3.5)
+    hard_negative = kinds == "hard_negative"
     out[hard_negative] = hard_negative_weight
     return balance_weights(y, out)
 
@@ -146,9 +141,9 @@ def main() -> None:
     gates = config["gates"]
     epochs = args.epochs or train_cfg["epochs"]
 
-    X, y, w = load_features()
-    w = apply_training_weights(y, w, train_cfg["hard_negative_weight"])
-    X_train, y_train, w_train, X_val, y_val, w_val = split_data(X, y, w)
+    X, y, w, k = load_features()
+    w = apply_training_weights(y, w, k, train_cfg["hard_negative_weight"])
+    X_train, y_train, w_train, _, X_val, y_val, _, k_val = split_data(X, y, w, k)
 
     device = pick_device()
     print(f"Training on {device}")
@@ -184,7 +179,7 @@ def main() -> None:
     with log_path.open("w", encoding="utf-8") as log:
         for epoch in range(1, epochs + 1):
             loss = train_epoch(model, train_loader, optimizer, device, pos_weight)
-            metrics = evaluate(model, X_val, y_val, w_val, device)
+            metrics = evaluate(model, X_val, y_val, k_val, device)
             scheduler.step()
             line = f"epoch={epoch} loss={loss:.4f} " + " ".join(f"{k}={v:.4f}" for k, v in metrics.items())
             print(line)
@@ -209,7 +204,7 @@ def main() -> None:
     CLASSIFIER_PATH.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), CLASSIFIER_PATH.with_suffix(".pt"))
 
-    final_metrics = evaluate(model, X_val, y_val, w_val, torch.device("cpu"))
+    final_metrics = evaluate(model, X_val, y_val, k_val, torch.device("cpu"))
     report = {"metrics": final_metrics, "gates": gates, "passed": True}
     for key, target in [
         ("recall", gates["recall_min"]),

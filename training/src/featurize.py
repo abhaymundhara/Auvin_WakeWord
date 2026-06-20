@@ -20,7 +20,9 @@ LABEL_MAP = {
 }
 
 
-def featurize_file(args: tuple) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+def featurize_file(
+    args: tuple,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
     path_str, label, weight_kind = args
     try:
         pcm = load_pcm(Path(path_str))
@@ -28,8 +30,8 @@ def featurize_file(args: tuple) -> tuple[np.ndarray, np.ndarray, np.ndarray] | N
         windows = featurize_clip_worker(pcm, featurizer)
         if windows.shape[0] == 0:
             return None
-        labels, weights = make_targets(windows.shape[0], label, weight_kind)
-        return windows, labels, weights
+        labels, weights, kinds = make_targets(windows.shape[0], label, weight_kind)
+        return windows, labels, weights, kinds
     except Exception:
         return None
 
@@ -38,18 +40,21 @@ def make_targets(
     window_count: int,
     label: int,
     weight_kind: str,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     labels = np.zeros((window_count,), dtype=np.int64)
     weights = np.ones((window_count,), dtype=np.float32)
+    kinds = np.full((window_count,), weight_kind, dtype="<U16")
 
     if label == 1:
         # Synthetic positives are padded with leading silence, so only the
         # final window is aligned with the completed wake phrase.
+        kinds.fill("positive_context")
         labels[-1] = 1
+        kinds[-1] = "positive"
     elif weight_kind == "hard_negative":
         weights.fill(4.0)
 
-    return labels, weights
+    return labels, weights, kinds
 
 
 def featurize_clip_worker(pcm: np.ndarray, featurizer: StreamingFeaturizer) -> np.ndarray:
@@ -86,6 +91,7 @@ def main() -> None:
     all_windows: list[np.ndarray] = []
     all_labels: list[np.ndarray] = []
     all_weights: list[np.ndarray] = []
+    all_kinds: list[np.ndarray] = []
 
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         futures = [pool.submit(featurize_file, item) for item in files]
@@ -95,10 +101,11 @@ def main() -> None:
             if result is None:
                 empty += 1
                 continue
-            windows, labels, weights = result
+            windows, labels, weights, kinds = result
             all_windows.append(windows)
             all_labels.append(labels)
             all_weights.append(weights)
+            all_kinds.append(kinds)
 
     if not all_windows:
         raise SystemExit("No training windows produced. Check padding and featurizer alignment.")
@@ -106,10 +113,12 @@ def main() -> None:
     X = np.concatenate(all_windows, axis=0).astype(np.float32)
     y = np.concatenate(all_labels, axis=0).astype(np.int64)
     w = np.concatenate(all_weights, axis=0).astype(np.float32)
+    k = np.concatenate(all_kinds, axis=0)
 
     np.save(FEATURES_DIR / "X.npy", X)
     np.save(FEATURES_DIR / "y.npy", y)
     np.save(FEATURES_DIR / "w.npy", w)
+    np.save(FEATURES_DIR / "k.npy", k)
 
     meta = {
         "windows": int(X.shape[0]),
@@ -117,6 +126,7 @@ def main() -> None:
         "empty_clips": empty,
         "positives": int((y == 1).sum()),
         "negatives": int((y == 0).sum()),
+        "kinds": {kind: int((k == kind).sum()) for kind in np.unique(k)},
     }
     with (FEATURES_DIR / "meta.json").open("w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
