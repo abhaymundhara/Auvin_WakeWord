@@ -130,9 +130,35 @@ def apply_training_weights(
     return balance_weights(y, out)
 
 
+def build_report(metrics: dict, gates: dict) -> dict:
+    report = {"metrics": metrics, "gates": gates, "passed": True}
+    for key, target in [
+        ("recall", gates["recall_min"]),
+        ("real_speech_fpr", gates["real_speech_fpr_max"]),
+        ("hard_negative_fpr", gates["hard_negative_fpr_max"]),
+        ("mean_pos_score", gates["mean_pos_score_min"]),
+        ("mean_neg_score", gates["mean_neg_score_max"]),
+    ]:
+        value = metrics.get(key, 0)
+        if key in {"recall", "mean_pos_score"}:
+            passed = value >= target
+        else:
+            passed = value <= target
+        report["passed"] = report["passed"] and passed
+    return report
+
+
+def write_report(report: dict) -> None:
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    with (LOGS_DIR / "metrics.json").open("w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2)
+    print(json.dumps(report, indent=2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train Auvin wake word classifier")
     parser.add_argument("--epochs", type=int, default=0)
+    parser.add_argument("--evaluate-only", action="store_true")
     args = parser.parse_args()
 
     with CONFIG_PATH.open(encoding="utf-8") as f:
@@ -150,8 +176,15 @@ def main() -> None:
 
     pos_weight = torch.tensor([1.0], device=device)
 
-    # MPS smoke test
     model = ConvWakeHead().to(device)
+    if args.evaluate_only:
+        pt_path = CLASSIFIER_PATH.with_suffix(".pt")
+        model.load_state_dict(torch.load(pt_path, map_location=device))
+        metrics = evaluate(model, X_val, y_val, k_val, device)
+        write_report(build_report(metrics, gates))
+        return
+
+    # MPS smoke test
     smoke_x = torch.randn(4, 16, 96, device=device)
     smoke_y = torch.randint(0, 2, (4,), device=device).float()
     out = model(smoke_x)
@@ -205,26 +238,8 @@ def main() -> None:
     torch.save(model.state_dict(), CLASSIFIER_PATH.with_suffix(".pt"))
 
     final_metrics = evaluate(model, X_val, y_val, k_val, torch.device("cpu"))
-    report = {"metrics": final_metrics, "gates": gates, "passed": True}
-    for key, target in [
-        ("recall", gates["recall_min"]),
-        ("real_speech_fpr", gates["real_speech_fpr_max"]),
-        ("hard_negative_fpr", gates["hard_negative_fpr_max"]),
-        ("mean_pos_score", gates["mean_pos_score_min"]),
-        ("mean_neg_score", gates["mean_neg_score_max"]),
-    ]:
-        val = final_metrics.get(key, 0)
-        if key == "recall" or key == "mean_pos_score":
-            ok = val >= target
-        elif key == "mean_neg_score":
-            ok = val <= target
-        else:
-            ok = val <= target
-        report["passed"] = report["passed"] and ok
-
-    with (LOGS_DIR / "metrics.json").open("w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2)
-    print(json.dumps(report, indent=2))
+    report = build_report(final_metrics, gates)
+    write_report(report)
 
     if not report["passed"]:
         print("Warning: not all production gates passed. Model saved anyway for iteration.")
