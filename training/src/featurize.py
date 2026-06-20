@@ -28,11 +28,28 @@ def featurize_file(args: tuple) -> tuple[np.ndarray, np.ndarray, np.ndarray] | N
         windows = featurize_clip_worker(pcm, featurizer)
         if windows.shape[0] == 0:
             return None
-        labels = np.full((windows.shape[0],), label, dtype=np.int64)
-        weights = np.full((windows.shape[0],), 1.0 if weight_kind == "positive" else (4.0 if weight_kind == "hard_negative" else 1.0), dtype=np.float32)
+        labels, weights = make_targets(windows.shape[0], label, weight_kind)
         return windows, labels, weights
     except Exception:
         return None
+
+
+def make_targets(
+    window_count: int,
+    label: int,
+    weight_kind: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    labels = np.zeros((window_count,), dtype=np.int64)
+    weights = np.ones((window_count,), dtype=np.float32)
+
+    if label == 1:
+        # Synthetic positives are padded with leading silence, so only the
+        # final window is aligned with the completed wake phrase.
+        labels[-1] = 1
+    elif weight_kind == "hard_negative":
+        weights.fill(4.0)
+
+    return labels, weights
 
 
 def featurize_clip_worker(pcm: np.ndarray, featurizer: StreamingFeaturizer) -> np.ndarray:
