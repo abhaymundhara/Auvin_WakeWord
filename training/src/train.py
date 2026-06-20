@@ -65,10 +65,15 @@ def compute_metrics(scores: np.ndarray, labels: np.ndarray, kinds: np.ndarray | 
     if kinds is not None:
         hard = kinds == "hard_negative"
         random_neg = kinds == "random_negative"
+        field_neg = kinds == "field_negative"
         if hard.any():
             metrics["hard_negative_fpr"] = float((preds & hard).sum() / max(hard.sum(), 1))
         if random_neg.any():
             metrics["real_speech_fpr"] = float((preds & random_neg).sum() / max(random_neg.sum(), 1))
+        if field_neg.any():
+            metrics["field_negative_fpr"] = float(
+                (preds & field_neg).sum() / max(field_neg.sum(), 1)
+            )
     return metrics
 
 
@@ -122,11 +127,14 @@ def apply_training_weights(
     w: np.ndarray,
     kinds: np.ndarray,
     hard_negative_weight: float,
+    field_negative_weight: float,
 ) -> np.ndarray:
     """Apply configured weights while preserving featurization's class markers."""
     out = w.copy()
     hard_negative = kinds == "hard_negative"
+    field_negative = kinds == "field_negative"
     out[hard_negative] = hard_negative_weight
+    out[field_negative] = field_negative_weight
     return balance_weights(y, out)
 
 
@@ -168,7 +176,13 @@ def main() -> None:
     epochs = args.epochs or train_cfg["epochs"]
 
     X, y, w, k = load_features()
-    w = apply_training_weights(y, w, k, train_cfg["hard_negative_weight"])
+    w = apply_training_weights(
+        y,
+        w,
+        k,
+        train_cfg["hard_negative_weight"],
+        train_cfg["field_negative_weight"],
+    )
     X_train, y_train, w_train, _, X_val, y_val, _, k_val = split_data(X, y, w, k)
 
     device = pick_device()

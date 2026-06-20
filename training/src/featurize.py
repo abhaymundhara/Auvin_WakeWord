@@ -16,7 +16,9 @@ from .streaming_featurizer import StreamingFeaturizer
 
 LABEL_MAP = {
     "positives": (1, "positive"),
+    "field_positives": (1, "field_positive"),
     "hard_negatives": (0, "hard_negative"),
+    "field_negatives": (0, "field_negative"),
     "random_negatives": (0, "random_negative"),
 }
 
@@ -55,7 +57,7 @@ def make_targets(
         kinds.fill("positive_context")
         labels[-1] = 1
         kinds[-1] = "positive"
-    elif weight_kind == "hard_negative":
+    elif weight_kind in {"hard_negative", "field_negative"}:
         weights.fill(4.0)
 
     return labels, weights, kinds
@@ -80,7 +82,7 @@ def collect_files(raw_dir: Path, augmentation: dict) -> list[tuple]:
             snr_db = 0.0
             noise_offset = 0
             if (
-                kind == "positive"
+                label == 1
                 and noise_files
                 and rng.random() < augmentation["background_noise_probability"]
             ):
