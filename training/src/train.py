@@ -169,6 +169,16 @@ def write_report(report: dict) -> None:
     print(json.dumps(report, indent=2))
 
 
+def checkpoint_score(metrics: dict, gates: dict) -> float:
+    """Rank only checkpoints that preserve positive sensitivity."""
+    if (
+        metrics["recall"] < gates["recall_min"]
+        or metrics["mean_pos_score"] < gates["mean_pos_score_min"]
+    ):
+        return -100.0 + metrics["recall"] + metrics["mean_pos_score"]
+    return metrics["composite"]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train Auvin wake word classifier")
     parser.add_argument("--epochs", type=int, default=0)
@@ -246,8 +256,9 @@ def main() -> None:
             log.write(line + "\n")
             log.flush()
 
-            if metrics["composite"] > best_score:
-                best_score = metrics["composite"]
+            score = checkpoint_score(metrics, gates)
+            if score > best_score:
+                best_score = score
                 best_state = {k: v.cpu() for k, v in model.state_dict().items()}
                 stale = 0
             else:
