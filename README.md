@@ -108,6 +108,12 @@ Latest full-data checkpoint (threshold `0.5`, held-out synthetic windows):
 
 All configured training gates pass. The separate nine-clip synthetic inference smoke test also passes with 4/4 positive detections and 0/5 false positives in both Python and Node. Real-microphone acceptance remains environment-specific and must be run before deployment.
 
+### Field status
+
+The current checked-in model is **not field-ready**. With the first owner-recorded batch and the production Node detector (`0.6` threshold, two-hit debounce), it achieves 15% recall and 5% clip-level false positives across 20 positive and 20 negative clips. The every-fifth temporal holdout is 25% recall and 25% false positives. These field results supersede synthetic metrics for deployment decisions.
+
+The training configuration now uses phonemically correct “aww-win” prompts and supports temporal field adaptation, but a second independent recording batch is required before retraining and acceptance. Run `./record_field_gate.sh 20` from the repository root; it appends clips 21–40 without overwriting the first batch.
+
 ## Detection pipeline
 
 16 kHz audio → 80 ms frames → Silero VAD → melspectrogram (+480 sample context) → speech embedding → Conv1D classifier → threshold + debounce + cooldown.
