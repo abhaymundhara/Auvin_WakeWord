@@ -28,7 +28,7 @@ def main() -> None:
         input_names=["input"],
         output_names=["output"],
         dynamic_axes={"input": {0: "batch"}, "output": {0: "batch"}},
-        opset_version=17,
+        opset_version=18,
     )
     size_kb = CLASSIFIER_PATH.stat().st_size / 1024
     print(f"Exported {CLASSIFIER_PATH} ({size_kb:.1f} KB)")
