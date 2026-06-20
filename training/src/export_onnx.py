@@ -29,7 +29,9 @@ def main() -> None:
         output_names=["output"],
         dynamic_axes={"input": {0: "batch"}, "output": {0: "batch"}},
         opset_version=18,
+        external_data=False,
     )
+    CLASSIFIER_PATH.with_suffix(".onnx.data").unlink(missing_ok=True)
     size_kb = CLASSIFIER_PATH.stat().st_size / 1024
     print(f"Exported {CLASSIFIER_PATH} ({size_kb:.1f} KB)")
 
