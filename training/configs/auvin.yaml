@@ -2,14 +2,12 @@ wake_word: auvin
 sample_rate: 16000
 positives:
   phrases:
-  - auvin
-  - Auvin
-  - hey auvin
-  - Hey Auvin
-  - hey aw vin
-  - oh auvin
-  - au vin
-  - hey au vin
+  - aw win
+  - aw-win
+  - hey aw win
+  - hey aw-win
+  - oh aw win
+  - okay aw win
   target_count: 18000
 hard_negatives:
   phrases:
@@ -24,9 +22,12 @@ hard_negatives:
   - hey siri
   - hey google
   - hey alexa
-  - called auvin
-  - this is auvin
-  - to auvin
+  - Owen
+  - a win
+  - I win
+  - we win
+  - all win
+  - awning
   target_count: 10000
 random_negatives:
   dataset: openslr/librispeech_asr
@@ -46,6 +47,9 @@ augmentation:
   pitch_semitones: 2.0
   gain_db: 6.0
   min_duration_sec: 2.4
+  background_noise_probability: 0.7
+  background_snr_db_min: 3.0
+  background_snr_db_max: 25.0
 training:
   hard_negative_weight: 40.0
   epochs: 50

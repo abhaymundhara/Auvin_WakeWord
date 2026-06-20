@@ -11,14 +11,12 @@ from .paths import CONFIG_PATH, VOICES_DIR
 
 
 CANDIDATE_POSITIVES = [
-    "auvin",
-    "Auvin",
-    "hey auvin",
-    "Hey Auvin",
-    "hey aw vin",
-    "oh auvin",
-    "au vin",
-    "hey au vin",
+    "aw win",
+    "aw-win",
+    "hey aw win",
+    "hey aw-win",
+    "oh aw win",
+    "okay aw win",
 ]
 
 CANDIDATE_HARD_NEGATIVES = [
@@ -33,9 +31,12 @@ CANDIDATE_HARD_NEGATIVES = [
     "hey siri",
     "hey google",
     "hey alexa",
-    "called auvin",
-    "this is auvin",
-    "to auvin",
+    "Owen",
+    "a win",
+    "I win",
+    "we win",
+    "all win",
+    "awning",
 ]
 
 DEFAULT_VOICE = "en_US-amy-medium"
@@ -114,8 +115,9 @@ def main() -> None:
                 "target_count": 10000,
             },
             "random_negatives": {
-                "dataset": "librispeech",
-                "split": "train.clean.100",
+                "dataset": "openslr/librispeech_asr",
+                "subset": "clean",
+                "split": "train.100",
                 "target_count": 15000,
             },
             "piper_voices": [
@@ -132,9 +134,12 @@ def main() -> None:
                 "pitch_semitones": 2.0,
                 "gain_db": 6.0,
                 "min_duration_sec": 2.4,
+                "background_noise_probability": 0.7,
+                "background_snr_db_min": 3.0,
+                "background_snr_db_max": 25.0,
             },
             "training": {
-                "hard_negative_weight": 4.0,
+                "hard_negative_weight": 40.0,
                 "epochs": 50,
                 "patience": 12,
                 "batch_size": 1024,

@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
 from tqdm import tqdm
 
-from .audio_utils import load_pcm
-from .paths import FEATURES_DIR, RAW_DIR
+from .audio_utils import load_pcm, mix_background_noise
+from .paths import CONFIG_PATH, FEATURES_DIR, RAW_DIR
 from .streaming_featurizer import StreamingFeaturizer
 
 
@@ -23,9 +24,12 @@ LABEL_MAP = {
 def featurize_file(
     args: tuple,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
-    path_str, label, weight_kind = args
+    path_str, label, weight_kind, noise_path, snr_db, noise_offset = args
     try:
         pcm = load_pcm(Path(path_str))
+        if noise_path is not None:
+            background = load_pcm(Path(noise_path))
+            pcm = mix_background_noise(pcm, background, snr_db, noise_offset)
         featurizer = StreamingFeaturizer()
         windows = featurize_clip_worker(pcm, featurizer)
         if windows.shape[0] == 0:
@@ -63,14 +67,31 @@ def featurize_clip_worker(pcm: np.ndarray, featurizer: StreamingFeaturizer) -> n
     return featurizer.extract_windows()
 
 
-def collect_files(raw_dir: Path) -> list[tuple[str, int, str]]:
-    files: list[tuple[str, int, str]] = []
+def collect_files(raw_dir: Path, augmentation: dict) -> list[tuple]:
+    files: list[tuple] = []
+    noise_files = sorted((raw_dir / "random_negatives").glob("*.wav"))
+    rng = random.Random(42)
     for bucket, (label, kind) in LABEL_MAP.items():
         bucket_dir = raw_dir / bucket
         if not bucket_dir.exists():
             continue
         for wav in bucket_dir.glob("*.wav"):
-            files.append((str(wav), label, kind))
+            noise_path = None
+            snr_db = 0.0
+            noise_offset = 0
+            if (
+                kind == "positive"
+                and noise_files
+                and rng.random() < augmentation["background_noise_probability"]
+            ):
+                noise = rng.choice(noise_files)
+                noise_path = str(noise)
+                snr_db = rng.uniform(
+                    augmentation["background_snr_db_min"],
+                    augmentation["background_snr_db_max"],
+                )
+                noise_offset = rng.randrange(0, max(noise.stat().st_size // 4, 1))
+            files.append((str(wav), label, kind, noise_path, snr_db, noise_offset))
     return files
 
 
@@ -80,7 +101,11 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=0, help="Limit files (0 = all)")
     args = parser.parse_args()
 
-    files = collect_files(RAW_DIR)
+    import yaml
+
+    with CONFIG_PATH.open(encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    files = collect_files(RAW_DIR, config["augmentation"])
     if args.limit > 0:
         files = files[: args.limit]
 
