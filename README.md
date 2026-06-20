@@ -30,13 +30,13 @@ python -m src.synthesize --download-voices
 python -m src.phonemize_check --write-config
 ```
 
-### 3. Synthesize training data (~43k clips, ~5 GB)
+### 3. Synthesize training data (43k clips, ~8 GB raw audio)
 
 ```bash
-python -m src.synthesize --download-voices
 # Smoke test first:
 python -m src.synthesize --smoke
-python -m src.featurize
+# Full dataset (18k positive, 10k hard-negative, 15k LibriSpeech):
+python -m src.synthesize --download-voices
 ```
 
 ### 4. Featurize, train, export
@@ -45,7 +45,11 @@ python -m src.featurize
 python -m src.featurize --workers 8
 python -m src.train 2>&1 | tee logs/train.log
 python -m src.export_onnx
+# Re-evaluate an existing checkpoint without retraining:
+python -m src.train --evaluate-only
 ```
+
+The full feature tensors currently require about 15 GB of disk space.
 
 Training logs go to `training/logs/train.log`. Monitor with `tail -f training/logs/train.log`.
 
@@ -66,6 +70,16 @@ python -m src.validate_clips
 
 Add your own mic recordings under `data/validation/positive/` and `data/validation/negative/`.
 
+On macOS, `rec` (from SoX) can create correctly formatted clips:
+
+```bash
+rec -r 16000 -c 1 -b 16 data/validation/positive/auvin-01.wav trim 0 3
+rec -r 16000 -c 1 -b 16 data/validation/negative/background-01.wav trim 0 10
+python -m src.validate_clips
+```
+
+Record at least 20 positive clips (`Auvin` and `Hey Auvin`) and 20 negative/noise clips across the microphones and distances you intend to support. Synthetic validation is a pipeline check, not a substitute for this field test.
+
 ## Production gates
 
 | Metric | Target |
@@ -74,9 +88,29 @@ Add your own mic recordings under `data/validation/positive/` and `data/validati
 | Real-speech FPR | ≤ 0.05% |
 | Hard-negative FPR | ≤ 3% |
 
+Latest full-data checkpoint (threshold `0.5`, held-out synthetic windows):
+
+| Metric | Result |
+|--------|--------|
+| Recall | 99.01% |
+| Real-speech FPR | 0.013% |
+| Hard-negative FPR | 2.16% |
+| Mean positive score | 0.969 |
+| Mean negative score | 0.017 |
+
+All configured training gates pass. The separate nine-clip synthetic inference smoke test also passes with 4/4 positive detections and 0/5 false positives in both Python and Node. Real-microphone acceptance remains environment-specific and must be run before deployment.
+
 ## Detection pipeline
 
 16 kHz audio → 80 ms frames → Silero VAD → melspectrogram (+480 sample context) → speech embedding → Conv1D classifier → threshold + debounce + cooldown.
+
+## Runtime adapters
+
+- Node: import `createNodeRuntime` from `@auvin/wake-word/node`.
+- Browser: import `createWebRuntime` from `@auvin/wake-word/web`; `models/auvin.onnx` is self-contained for a single browser fetch.
+- React Native: install the optional `onnxruntime-react-native` peer and import `createNativeRuntime` from `@auvin/wake-word/native`.
+
+All adapters are passed to `createWakeWordDetector(runtime, options)`. The default live threshold is `0.6`, with two consecutive hits and a 1.5-second cooldown; tune these only against recordings from the target environment.
 
 ## License
 
