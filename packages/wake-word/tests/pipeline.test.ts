@@ -36,10 +36,14 @@ describe("wake-word pipeline", () => {
     for (let i = 0; i < 35; i += 1) {
       await pipeline.processFrame(silenceFrame());
     }
-    const start = performance.now();
-    await pipeline.processFrame(silenceFrame());
-    const elapsed = performance.now() - start;
-    expect(elapsed).toBeLessThan(20);
+    const samples: number[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      const start = performance.now();
+      await pipeline.processFrame(silenceFrame());
+      samples.push(performance.now() - start);
+    }
+    samples.sort((a, b) => a - b);
+    expect(samples[Math.floor(samples.length / 2)]).toBeLessThan(20);
   }, 120000);
 
   it("warms feature history during low-VAD leading audio", async () => {

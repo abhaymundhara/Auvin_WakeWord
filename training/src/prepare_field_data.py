@@ -18,7 +18,7 @@ def numbered_files(directory: Path, prefix: str) -> list[Path]:
 
 
 def is_training_file(path: Path) -> bool:
-    return int(path.stem.rsplit("-", 1)[1]) % 2 == 1
+    return int(path.stem.rsplit("-", 1)[1]) % 5 != 0
 
 
 def prepare_field_data(copies_per_positive: int) -> dict[str, int]:
@@ -67,7 +67,7 @@ def prepare_field_data(copies_per_positive: int) -> dict[str, int]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Prepare odd-numbered field clips for training; keep evens held out"
+        description="Prepare field clips for training; keep every fifth clip held out"
     )
     parser.add_argument("--copies-per-positive", type=int, default=100)
     args = parser.parse_args()

@@ -78,7 +78,7 @@ def compute_metrics(scores: np.ndarray, labels: np.ndarray, kinds: np.ndarray | 
             recall
             - 5 * metrics.get("hard_negative_fpr", 0.0)
             - 100 * metrics.get("real_speech_fpr", 0.0)
-            - 2 * metrics.get("field_negative_fpr", 0.0)
+            - 10 * metrics.get("field_negative_fpr", 0.0)
         )
     return metrics
 

@@ -140,7 +140,7 @@ def main() -> None:
             },
             "training": {
                 "hard_negative_weight": 40.0,
-                "field_negative_weight": 40.0,
+                "field_negative_weight": 400.0,
                 "epochs": 35,
                 "patience": 8,
                 "batch_size": 1024,
