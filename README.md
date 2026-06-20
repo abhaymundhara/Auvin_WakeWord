@@ -68,6 +68,14 @@ python -m src.generate_validation_clips
 python -m src.validate_clips
 ```
 
+For the authoritative field gate (the same VAD, debounce, threshold, and cooldown as the Node detector), run:
+
+```bash
+npm run validate:field --workspace=@auvin/wake-word
+# After field adaptation, evaluate only every fifth held-out clip:
+npm run validate:field --workspace=@auvin/wake-word -- --holdout-modulo 5
+```
+
 Add your own mic recordings under `data/validation/positive/` and `data/validation/negative/`.
 
 On macOS, `rec` (from SoX) can create correctly formatted clips:

@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:live": "npm run build && node dist/bin/test-live.js"
+    "test:live": "npm run build && node dist/bin/test-live.js",
+    "validate:field": "npm run build && node dist/bin/validate-field.js"
   },
   "dependencies": {},
   "devDependencies": {

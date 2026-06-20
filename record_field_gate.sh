@@ -3,7 +3,6 @@ set -euo pipefail
 
 POS_DIR="data/validation/positive"
 NEG_DIR="data/validation/negative"
-PYTHON="${PYTHON:-python3}"
 COUNT="${1:-20}"
 
 mkdir -p "$POS_DIR" "$NEG_DIR"
@@ -69,9 +68,8 @@ echo ""
 echo ">>>> NEGATIVES DONE ($COUNT clips)"
 echo ""
 
-# --- Validate ---
+# --- Validate with the production Node detector (VAD + debounce + cooldown) ---
 echo "============================================"
 echo "  Running validation..."
 echo "============================================"
-cd training
-$PYTHON -m src.validate_clips
+npm run validate:field --workspace=@auvin/wake-word
