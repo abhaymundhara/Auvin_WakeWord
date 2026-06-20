@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createNodeRuntime, createWakeWordDetector } from "../index.js";
 import { FRAME_SAMPLES } from "../core/constants.js";
 
-const root = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+const root = path.resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
 const backboneDir = path.join(root, "models/backbone");
 const classifierPath = path.join(root, "models/auvin.onnx");
 
