@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createWakeWordDetector, createNodeRuntime } from "../src/index.js";
 import { FRAME_SAMPLES, SAMPLE_RATE } from "../src/core/constants.js";
 import { StreamingPipeline } from "../src/core/pipeline.js";
+import type { InferenceSessionLike } from "../src/core/types.js";
 
 const root = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 const backboneDir = path.join(root, "models/backbone");
@@ -40,6 +41,42 @@ describe("wake-word pipeline", () => {
     const elapsed = performance.now() - start;
     expect(elapsed).toBeLessThan(20);
   }, 120000);
+
+  it("warms feature history during low-VAD leading audio", async () => {
+    let speech = false;
+    let classifierRuns = 0;
+    const classifier: InferenceSessionLike = {
+      async run() {
+        classifierRuns += 1;
+        return { output: Float32Array.from([0.9]) };
+      },
+    };
+    const pipeline = new StreamingPipeline("/models", classifier);
+    await pipeline.init(async (modelPath) => ({
+      async run() {
+        if (modelPath.endsWith("silero_vad.onnx")) {
+          return {
+            output: Float32Array.from([speech ? 1 : 0]),
+            hn: new Float32Array(128),
+            cn: new Float32Array(128),
+          };
+        }
+        if (modelPath.endsWith("melspectrogram.onnx")) {
+          return { output: new Float32Array(8 * 32) };
+        }
+        return { output: new Float32Array(96) };
+      },
+    }));
+
+    for (let i = 0; i < 16; i += 1) {
+      expect(await pipeline.processFrame(silenceFrame())).toBeNull();
+    }
+    expect(classifierRuns).toBe(0);
+
+    speech = true;
+    expect(await pipeline.processFrame(silenceFrame())).toBeCloseTo(0.9);
+    expect(classifierRuns).toBe(1);
+  });
 
   it("debounces detections", async () => {
     let detections = 0;

@@ -28,7 +28,7 @@ export class StreamingPipeline {
   private vadSession: InferenceSessionLike | null = null;
 
   private pcmBuffer: number[] = [];
-  private melBuffer: Float32Array[] = [];
+  private melBuffer: Float32Array[] = this.createInitialMelBuffer();
   private embeddingBuffer: Float32Array[] = [];
   private vadH = new Float32Array(2 * 1 * VAD_H_DIM);
   private vadC = new Float32Array(2 * 1 * VAD_C_DIM);
@@ -40,6 +40,13 @@ export class StreamingPipeline {
     private readonly classifierSession: InferenceSessionLike,
   ) {}
 
+  private createInitialMelBuffer(): Float32Array[] {
+    return Array.from(
+      { length: MEL_BUFFER_FRAMES },
+      () => new Float32Array(32).fill(1),
+    );
+  }
+
   async init(
     createSession: (path: string) => Promise<InferenceSessionLike>,
   ): Promise<void> {
@@ -50,7 +57,7 @@ export class StreamingPipeline {
 
   reset(): void {
     this.pcmBuffer = [];
-    this.melBuffer = [];
+    this.melBuffer = this.createInitialMelBuffer();
     this.embeddingBuffer = [];
     this.vadH.fill(0);
     this.vadC.fill(0);
@@ -132,11 +139,10 @@ export class StreamingPipeline {
 
   async processFrame(frame: Float32Array): Promise<number | null> {
     const speechProb = await this.runVad(frame);
-    if (speechProb < 0.1) {
-      return null;
-    }
     if (this.speechStartedAt === null) {
-      this.speechStartedAt = Date.now();
+      if (speechProb >= 0.1) {
+        this.speechStartedAt = Date.now();
+      }
     }
     this.pcmBuffer.push(...frame);
     if (this.pcmBuffer.length > SAMPLE_RATE * 10) {
@@ -144,6 +150,9 @@ export class StreamingPipeline {
     }
     await this.processBufferedFrame();
     this.frameCount += 1;
+    if (speechProb < 0.1) {
+      return null;
+    }
     if (this.embeddingBuffer.length < CLASSIFIER_FRAMES) {
       return null;
     }
